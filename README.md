@@ -1,2 +1,2 @@
-# picam
+# petcam
 raspberry pi x camera
