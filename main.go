@@ -42,14 +42,15 @@ func main() {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{Config: aws.Config{Region: aws.String(region)}, Profile: "petcam"}))
 	svc = sqs.New(sess)
 
+	log.Println("start polling")
 	for {
-		log.Println("start receive messages")
+		// log.Println("start receive messages")
 		msgs, err := receiveMessages()
 		if err != nil {
 			log.Fatal(err)
 		}
 		if len(msgs) == 0 {
-			log.Println("no queues")
+			// log.Println("no queues")
 			continue
 		}
 
