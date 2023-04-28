@@ -4,16 +4,21 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/client"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/defaults"
+	"github.com/aws/aws-sdk-go/aws/endpoints"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/slack-go/slack"
 )
 
 const (
-	url    = "https://slack.com/api/files.upload"
-	region = "ap-northeast-1"
+	url = "https://slack.com/api/files.upload"
 )
 
 var (
@@ -39,7 +44,19 @@ func main() {
 		log.Fatal("$PETCAM_QUEUE_URL is empty")
 	}
 
-	sess := session.Must(session.NewSessionWithOptions(session.Options{Config: aws.Config{Region: aws.String(region)}, Profile: "petcam"}))
+	sess := session.Must(
+		session.NewSession(&aws.Config{
+			Retryer: CustomRetryer{
+				DefaultRetryer: client.DefaultRetryer{
+					NumMaxRetries: client.DefaultRetryerMaxNumRetries,
+				}},
+			Credentials: credentials.NewCredentials(&credentials.SharedCredentialsProvider{
+				Filename: defaults.SharedCredentialsFilename(),
+				Profile:  "petcam",
+			}),
+			Region: aws.String(endpoints.ApNortheast1RegionID),
+		}),
+	)
 	svc = sqs.New(sess)
 
 	log.Println("start polling")
@@ -153,4 +170,26 @@ func deleteAllQueue(msgs []*sqs.Message) error {
 	}
 
 	return nil
+}
+
+// Custom Retry
+// cf. https://github.com/aws/aws-sdk-go/blob/main/example/aws/request/customRetryer/custom_retryer.go
+type CustomRetryer struct {
+	client.DefaultRetryer
+}
+
+type temporary interface {
+	Temporary() bool
+}
+
+func (r CustomRetryer) ShouldRetry(req *request.Request) bool {
+	if origErr := req.Error; origErr != nil {
+		switch origErr.(type) {
+		case temporary:
+			if strings.Contains(origErr.Error(), "read: connection reset") {
+				return true
+			}
+		}
+	}
+	return r.DefaultRetryer.ShouldRetry(req)
 }
