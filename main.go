@@ -184,6 +184,7 @@ type temporary interface {
 
 func (r CustomRetryer) ShouldRetry(req *request.Request) bool {
 	if origErr := req.Error; origErr != nil {
+		log.Println(origErr.Error())
 		switch origErr.(type) {
 		case temporary:
 			if strings.Contains(origErr.Error(), "read: connection reset") {
