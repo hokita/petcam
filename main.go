@@ -49,6 +49,8 @@ func main() {
 			Retryer: CustomRetryer{
 				DefaultRetryer: client.DefaultRetryer{
 					NumMaxRetries: client.DefaultRetryerMaxNumRetries,
+					MinRetryDelay: client.DefaultRetryerMinRetryDelay,
+					MaxRetryDelay: client.DefaultRetryerMaxRetryDelay,
 				}},
 			Credentials: credentials.NewCredentials(&credentials.SharedCredentialsProvider{
 				Filename: defaults.SharedCredentialsFilename(),
