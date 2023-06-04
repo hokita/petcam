@@ -14,7 +14,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
-	"github.com/slack-go/slack"
 )
 
 const (
@@ -38,6 +37,8 @@ func main() {
 	if channelID == "" {
 		log.Fatal("$PETCAM_SLACK_CHANNEL_ID is empty")
 	}
+
+	slack := CreateSlack(token, channelID)
 
 	queueURL = os.Getenv("PETCAM_QUEUE_URL")
 	if channelID == "" {
@@ -73,14 +74,20 @@ func main() {
 			continue
 		}
 
+		log.Println("send start message to slack")
+		err = slack.sendMessage("撮影開始")
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		log.Println("take video")
 		err = takeVideo()
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		log.Println("send slack")
-		err = sendSlack()
+		log.Println("send video to slack")
+		err = slack.sendMovie()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -115,28 +122,6 @@ func takeVideo() error {
 
 func deleteVideo() error {
 	err := exec.Command("rm", "test.h264", "test.mp4").Run()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func sendSlack() error {
-	file, err := os.Open("test.mp4")
-	if err != nil {
-		return err
-	}
-
-	api := slack.New(token)
-
-	params := slack.FileUploadParameters{
-		Reader:   file,
-		Filename: "movie.mp4",
-		Channels: []string{channelID},
-	}
-
-	_, err = api.UploadFile(params)
 	if err != nil {
 		return err
 	}
