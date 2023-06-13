@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/client"
@@ -17,7 +18,8 @@ import (
 )
 
 const (
-	url = "https://slack.com/api/files.upload"
+	url      = "https://slack.com/api/files.upload"
+	maxRetry = 3
 )
 
 var (
@@ -62,12 +64,43 @@ func main() {
 	)
 	svc = sqs.New(sess)
 
+	errCount := 0
+
 	log.Println("start polling")
 	for {
 		// log.Println("start receive messages")
 		msgs, err := receiveMessages()
 		if err != nil {
-			log.Fatal(err)
+			log.Println("failed to get queue")
+			err := slack.sendMessage("queueの取得に失敗しました。 err: " + err.Error())
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			errCount = errCount + 1
+			if errCount >= maxRetry {
+				log.Println("reach to max retry count")
+				err := slack.sendMessage("最大リトライ数に達しました。機能を停止します")
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				log.Fatal(err)
+			}
+
+			err = slack.sendMessage("機能を一時停止します。")
+			if err != nil {
+				log.Fatal(err)
+			}
+			log.Println("sleep")
+			time.Sleep(1 * time.Minute)
+
+			log.Println("restart")
+			err = slack.sendMessage("再開します")
+			if err != nil {
+				log.Fatal(err)
+			}
+			continue
 		}
 		if len(msgs) == 0 {
 			// log.Println("no queues")
