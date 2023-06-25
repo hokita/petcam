@@ -74,7 +74,7 @@ func main() {
 			log.Println("failed to get queue")
 			err := slack.sendMessage("queueの取得に失敗しました。 err: " + err.Error())
 			if err != nil {
-				log.Fatal(err)
+				log.Println("failed to send slack a message")
 			}
 
 			errCount = errCount + 1
@@ -82,7 +82,7 @@ func main() {
 				log.Println("reach to max retry count")
 				err := slack.sendMessage("最大リトライ数に達しました。機能を停止します")
 				if err != nil {
-					log.Fatal(err)
+					log.Println("failed to send slack a message")
 				}
 
 				log.Fatal(err)
