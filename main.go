@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -19,6 +21,7 @@ import (
 
 const (
 	url      = "https://slack.com/api/files.upload"
+	filepath = "movie.mp4"
 	maxRetry = 3
 )
 
@@ -120,7 +123,7 @@ func main() {
 		}
 
 		log.Println("send video to slack")
-		err = slack.sendMovie()
+		err = slack.sendMovie(filepath)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -142,21 +145,19 @@ func main() {
 }
 
 func takeVideo() error {
-	err := exec.Command("raspivid", "-vf", "-hf", "-o", "test.h264", "-w", "640", "-h", "480", "-t", "10000").Run()
-	if err != nil {
-		return err
-	}
+	cmd := exec.Command("ffmpeg", "-y", "-f", "v4l2", "-framerate", "25", "-video_size", "640x480", "-i", "/dev/video0", "-t", "10", "-vf", "hflip,vflip", filepath)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
 
-	err = exec.Command("MP4Box", "-fps", "30", "-add", "test.h264", "test.mp4").Run()
-	if err != nil {
-		return err
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to take video: %v, %s", err, stderr.String())
 	}
 
 	return nil
 }
 
 func deleteVideo() error {
-	err := exec.Command("rm", "test.h264", "test.mp4").Run()
+	err := exec.Command("rm", filepath).Run()
 	if err != nil {
 		return err
 	}

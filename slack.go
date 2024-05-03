@@ -11,8 +11,8 @@ type Slack struct {
 	channelID string
 }
 
-func (s *Slack) sendMovie() error {
-	file, err := os.Open("test.mp4")
+func (s *Slack) sendMovie(filepath string) error {
+	file, err := os.Open(filepath)
 	if err != nil {
 		return err
 	}
